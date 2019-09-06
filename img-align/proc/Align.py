@@ -2,12 +2,15 @@ import cv2
 import numpy as np
 from timeit import default_timer as timer
 from PIL import Image
-from matplotlib import pyplot as plt
 from tqdm import tqdm
 import os
 
-MAX_FEATURES = 1000
+MAX_FEATURES = 5000
 GOOD_MATCH_PERCENT = 0.40
+PERC_COMMON_THRESH = 0.40
+KEYPOINT_COLOR_MATCH_FILE = (20, 200, 20)
+MATCH_FILE_NAME = "matches.jpg"
+COMPOSITE_FILE_NAME = "composite.jpg"
 
 
 def prepare_img(filename):
@@ -19,11 +22,16 @@ def prepare_img(filename):
     return cv2.cvtColor(cv2.imread(filename, cv2.IMREAD_COLOR), cv2.COLOR_BGR2GRAY)
 
 
+def add_composite(composite, new_image_dat):
+    return Image.blend(composite, Image.fromarray(new_image_dat), alpha=0.5)
+
+
 class Align:
-    def __init__(self, ref_filename, imgs_filename, out_dir):
+    def __init__(self, ref_filename, imgs_filename, out_dir, compositor):
         self.ref = ref_filename
         self.inputs = imgs_filename
         self.out_dir = out_dir
+        self.compositor = compositor
 
         self.writeHomography = False
         self.writeMatches = False
@@ -33,7 +41,8 @@ class Align:
     def __repr__(self):
         return "[%s, %s]" % (self.ref, self.inputs)
 
-    def find_matches(self, orb, img, ref_descriptors, match_quality_threshold):
+    @staticmethod
+    def find_matches(orb, img, ref_descriptors, match_quality_threshold):
         # Detect ORB features and compute descriptors.
         keypoints, descriptors = orb.detectAndCompute(img, None)
 
@@ -50,7 +59,8 @@ class Align:
 
         return keypoints, matches
 
-    def warp_img_by_matches(self, img, ref, ref_keypoints, keypoints, matches, idx_to_use):
+    @staticmethod
+    def warp_img_by_matches(img, ref, ref_keypoints, keypoints, matches, idx_to_use):
 
         matches_to_use = [m for m in matches if m.trainIdx in idx_to_use]
 
@@ -80,7 +90,6 @@ class Align:
 
         # Results
         results = {}
-        img_dic = {}
         keypoints_dic = {}
         matches_dic = {}
 
@@ -96,11 +105,7 @@ class Align:
             keypoints, matches = self.find_matches(orb, img, ref_descriptors, GOOD_MATCH_PERCENT)
             keypoints_dic[filename] = keypoints
             matches_dic[filename] = matches
-            # img_dic[filename] = img
 
-            # Draw top matches
-            if self.writeMatches:
-                cv2.imwrite("matches.jpg", cv2.drawMatches(filename, keypoints, ref, ref_keypoints, matches, None))
         end = timer()
         print("Processed matches in %s sec" % round(end - start, 2))
 
@@ -118,7 +123,7 @@ class Align:
 
         # find the commonest of common point (can't inverse dict because of non-unique lines.)
         # Keep only points for which matches were found in at least 30% of the images.
-        threshold = 0.3 * len(self.inputs)
+        threshold = PERC_COMMON_THRESH * len(self.inputs)
         idx_to_use = []
         for idx, num_uses in common_pts.items():
             if num_uses < threshold:
@@ -127,12 +132,12 @@ class Align:
                 idx_to_use.append(idx)
 
         to_draw = [kpt for i, kpt in enumerate(ref_keypoints) if i in idx_to_use]
-        img2 = cv2.drawKeypoints(ref, to_draw, None, color=(20, 200, 20), flags=0)
-        cv2.imwrite("matches.jpg", img2)
+        img2 = cv2.drawKeypoints(ref, to_draw, None, color=KEYPOINT_COLOR_MATCH_FILE, flags=0)
+        cv2.imwrite(MATCH_FILE_NAME, img2)
 
         print("Starting warping")
         start = timer()
-        composite = Image.fromarray(ref)
+        #  composite = Image.fromarray(ref)
         for i, filename in enumerate(tqdm(self.inputs)):
             img = prepare_img(filename)
             # Warp image
@@ -140,14 +145,16 @@ class Align:
                 img, ref, ref_keypoints, keypoints_dic[filename], matches_dic[filename], idx_to_use)
 
             # Add to composite
-            composite = Image.blend(composite, Image.fromarray(dat), alpha= 1/(i+1))
+            self.compositor.compose(dat)
+            #  composite = Image.blend(composite, Image.fromarray(dat), alpha=1/(i+1))
+            #  composite = add_composite(composite, dat)
 
             # Write to file
             new_path = "%s/%s" % (self.out_dir, os.path.basename(filename))
-            cv2.imwrite(new_path, dat)            
+            cv2.imwrite(new_path, dat)
 
-            # results[filename] = dat
-        composite.save("after-composite.jpg")
+        self.compositor.save(COMPOSITE_FILE_NAME)
+        #  composite.save(COMPOSITE_FILE_NAME)
         end = timer()
         print("Processed warping in %s sec" % round(end - start, 2))
 

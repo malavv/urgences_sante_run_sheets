@@ -6,16 +6,16 @@ proc.py: Image Perspective Alignment
 From the article on: https://www.learnopencv.com/image-alignment-feature-based-using-opencv-c-python/
 
 usage:
-  proc -ref "../imgs/21543780.png" -img "../imgs/*.png" -out "../aligned/"
+  proc --ref "../imgs/21543780.png" --img "../imgs/*.png" --out "../aligned/"
 
 """
 import glob
 import os
-import cv2
 import sys
 import getopt
 
 from proc.Align import Align
+from proc.Compositor import Compositor
 
 
 def usage():
@@ -66,7 +66,9 @@ if __name__ == '__main__':
     imgs = glob.glob(imgs_filename)
     assert len(imgs) > 0, "Must have at least one image to convert."
 
-    aligner = Align(ref_filename, imgs, out_dir)
+    compositor = Compositor.get_additive()
+
+    aligner = Align(ref_filename, imgs, out_dir, compositor)
 
     aligned_dic = aligner.align()
 
