@@ -1,5 +1,6 @@
 import cv2
 import os
+from tqdm import tqdm
 
 
 def get_name_template(filename):
@@ -40,7 +41,7 @@ class Cropper:
         """
         crops = crop_config['crops'].items()
 
-        for filename in self.inputs:
+        for filename in tqdm(self.inputs):
             img = cv2.imread(filename)
             name_template = get_name_template(filename)
 
