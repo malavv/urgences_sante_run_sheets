@@ -13,7 +13,7 @@ import os
 import sys
 import yaml
 
-from Cropper import Cropper
+from crop.Cropper import Cropper
 
 
 def usage():
