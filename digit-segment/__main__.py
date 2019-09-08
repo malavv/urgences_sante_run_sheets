@@ -89,6 +89,11 @@ def try_mser(gray):
     cv2.imshow("text only", text_only)
     cv2.waitKey(0)
 
+    for i, contour in enumerate(hulls):
+        x, y, w, h = cv2.boundingRect(contour)
+        cv2.imshow('test.png', gray[y:y + h, x:x + w])
+        cv2.waitKey(0)
+
 
 def process(image, hour_mask):
 
