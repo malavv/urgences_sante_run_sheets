@@ -10,8 +10,8 @@ from tqdm import tqdm
 import numpy as np
 
 
-from DigitSegmenter import DigitSegmenter
-from Helper import get_opts
+from segment.DigitSegmenter import DigitSegmenter
+from segment.Helper import get_opts
 
 usage = "python digit-segment/ --img <images wildcard> --out <output directory>"
 commands = ["img", "out"]
@@ -31,9 +31,7 @@ if __name__ == '__main__':
 
     images = glob.glob(image_wildcard)
 
-    print("Starting Digit Segmenter with configuration: %s, %s, %s" % (image_wildcard, images, out_dir))
-
-    segmenter = DigitSegmenter("hour_mask.png", show_debug_vis)
+    segmenter = DigitSegmenter("./digit-segment/hour_mask.png", show_debug_vis)
 
     for img in tqdm(images):
         base = os.path.basename(img)

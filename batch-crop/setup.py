@@ -9,5 +9,5 @@ setup(
     author='malavv',
     author_email='maxime.lavigne@mail.mcgill.ca',
     description='Crops batch of files using configuration file',
-    install_requires=['yaml']
+    install_requires=['pyyaml']
 )

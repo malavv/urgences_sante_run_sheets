@@ -2,12 +2,12 @@ import cv2
 import numpy as np
 
 
-overlap_perc_for_similar_threshold = 0.8
+overlap_perc_for_similar_threshold = 0.1
 digit_padding_in_px = 5
 
 def is_digit_shaped(rect):
     x, y, w, h = rect
-    return h > 3 and w > 3  # Complete heuristic to remove black around image.
+    return 3 < h and 3 < w < 50  # Complete heuristic to remove black around image.
 
 
 def exists_similar(rect, vrects, area_overlap):
@@ -23,7 +23,7 @@ def get_overlap(lhs, rhs):
     SB = w2 * h2
     SI = max(0, min(x1 + w1, x2 + w2) - max(x1, x2)) * max(0, min(y1 + h1, y2 + h2) - max(y1, y2))
     SU = SA + SB - SI
-    perc_overlap = SI / SU
+    perc_overlap = SI / float(SU)
 
     return perc_overlap
 
