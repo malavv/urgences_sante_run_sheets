@@ -138,6 +138,5 @@ class DigitSegmenter:
         mnist_hstack = self.make_similar_to_mnist(crude_digits)
         if self.show_debug_vis:
             cv2.imshow("5-hstack", mnist_hstack)
-            cv2.waitKey(0)
 
         return mnist_hstack

@@ -6,6 +6,9 @@ Digit Segmenter
 import glob
 import cv2
 import os
+from tqdm import tqdm
+import numpy as np
+
 
 from DigitSegmenter import DigitSegmenter
 from Helper import get_opts
@@ -19,6 +22,10 @@ def as_grayscale(filename):
     return cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
 
 
+def is_mostly_blank(img):
+    return np.mean(img) > 240
+
+
 if __name__ == '__main__':
     image_wildcard, out_dir = get_opts(commands, usage)
 
@@ -28,7 +35,12 @@ if __name__ == '__main__':
 
     segmenter = DigitSegmenter("hour_mask.png", show_debug_vis)
 
-    for img in images:
+    for img in tqdm(images):
         base = os.path.basename(img)
-        hstack = segmenter.segment(as_grayscale(img))
+        gray = as_grayscale(img)
+
+        if is_mostly_blank(gray):
+            continue
+
+        hstack = segmenter.segment(gray)
         cv2.imwrite("%s/%s" % (out_dir, base), hstack)
