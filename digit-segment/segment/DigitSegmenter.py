@@ -1,41 +1,70 @@
 import cv2
 import numpy as np
 
-
-overlap_perc_for_similar_threshold = 0.1
-digit_padding_in_px = 5
-
-def is_digit_shaped(rect):
-    x, y, w, h = rect
-    return 3 < h and 3 < w < 50  # Complete heuristic to remove black around image.
+from segment.Helper import get_overlap
 
 
-def exists_similar(rect, vrects, area_overlap):
-    return any(get_overlap(rect, valid_rect) > area_overlap for valid_rect in vrects)
+def rng_overlap(lhs, rhs):
+    # start, end
+    s1, e1 = lhs
+    s2, e2 = rhs
+    if e1 < s2 or e2 < s1:
+        return 0
+    return min(e1, e2) - max(s1, s2)
 
 
-def get_overlap(lhs, rhs):
-    x1, y1, w1, h1 = lhs
-    x2, y2, w2, h2 = rhs
+class NumImgs:
+    def __init__(self):
+        # Rect for best candidate
+        self.digit_candidate = [None, None, None, None]
+        # Img for best candidate
+        self.best_digits = [None, None, None, None]
 
-    # Some stackoverflow code to compute overlap of rectangle A and B. Seem to come from VB, ugly but meh.
-    SA = w1 * h1
-    SB = w2 * h2
-    SI = max(0, min(x1 + w1, x2 + w2) - max(x1, x2)) * max(0, min(y1 + h1, y2 + h2) - max(y1, y2))
-    SU = SA + SB - SI
-    perc_overlap = SI / float(SU)
+    def find_digit_index(self, rect):
+        x, y, w, h = rect
+        for i, candidate in enumerate(self.digit_candidate):
+            if candidate is None:  # First candidate
+                return i
+            x1, y1, w1, h1 = candidate
+            overlap = rng_overlap((x, x + w), (x1, x1 + w1))
+            if overlap > 3:  # more than 3 pixel overlap in horizontal direction
+                return i
+        return None
 
-    return perc_overlap
+    def addImg(self, rect, img):
+        x, y, w, h = rect
+        i = self.find_digit_index(rect)
+
+        assert i is not None, "Incorrect digit guess"
+
+        prior = self.digit_candidate[i]
+
+        if prior is None:  # First time set
+            self.digit_candidate[i] = rect
+            self.best_digits[i] = img
+            return
+
+        # Else check if taller (and replace)
+        if h > prior[3]:
+            self.digit_candidate[i] = rect
+            self.best_digits[i] = img
+            return
+
+        # maybe also check if wider? but not 2 digit wide?
 
 
 class DigitSegmenter:
-    def __init__(self, mask_filename, show_debug_vis):
+    def __init__(self, mask_filename, show_debug_vis, overlap_perc_for_similar_threshold,
+                 digit_padding_in_px, is_digit_shaped):
+
         # A mask for the hour mark in the image. The ":" part.
         self.hour_mask = cv2.bitwise_not(cv2.imread(mask_filename, cv2.IMREAD_GRAYSCALE))
-        # Show debug
+        # Show debug visualizations
         self.show_debug_vis = show_debug_vis
-        # MSER processor
-        self.mser = cv2.MSER_create()
+        #
+        self.is_digit_shaped = is_digit_shaped
+        self.is_similar_overlap_thresh = overlap_perc_for_similar_threshold
+        self.digit_padding_in_px = digit_padding_in_px
 
     def __repr__(self):
         return "DigitSegmenter()"
@@ -50,10 +79,16 @@ class DigitSegmenter:
         * Tried canny+contour but didn't work as well as this mser.
         """
 
+        img = cv2.morphologyEx(img, cv2.MORPH_OPEN, (2, 2), iterations=5)
+        if self.show_debug_vis:
+            cv2.imshow("2.5-Closing Morph. trans.", img)
+            cv2.waitKey(0)
+
         # Normally here people are more interested in the raw regions than the crude bounding rectangle.
         # but let's start with something. The regions can be used to create form fitting "hulls" that are
         # more conservative than the bounding rectangles.
-        regions, bonding_rect = self.mser.detectRegions(img)
+        mser = cv2.MSER_create()
+        regions, bonding_rect = mser.detectRegions(img)
 
         # Draw MSER detected areas
         vis = img.copy()  # because we will draw on it.
@@ -64,21 +99,30 @@ class DigitSegmenter:
             cv2.waitKey(0)
 
         # Separate detected regions into distinct bounding rectangles (which are not garbage pixels around the border)
-        valid_rect = []
+#        valid_rects = []
+        num_imgs = NumImgs()
         for rect in bonding_rect:
-            if not is_digit_shaped(rect):
+            x, y, w, h = rect
+
+            if not self.is_digit_shaped(rect):
                 continue
-            if exists_similar(rect, valid_rect, overlap_perc_for_similar_threshold):
-                continue
-            valid_rect.append(rect.copy())
+
+            num_imgs.addImg(rect, img[y:y + h, x:x + w].copy())
+
+            #cv2.imshow('3-hulls', img[y:y + h, x:x + w])
+            #cv2.waitKey(0)
+
+            #if any(get_overlap(rect, valid_rect) > self.is_similar_overlap_thresh for valid_rect in valid_rects):
+#                continue
+#            valid_rects.append(rect.copy())
 
         # Extract Sub-Images (saving digit bounding rectangles as distinct images)
-        digits = []
-        for rect in valid_rect:
-            x, y, w, h = rect
-            digits.append(img[y:y + h, x:x + w].copy())
+        #digits = []
+        #for rect in valid_rects:
+#            x, y, w, h = rect
+#            digits.append(img[y:y + h, x:x + w].copy())
 
-        return digits
+        return num_imgs.best_digits
 
     def make_similar_to_mnist(self, digits):
         # Inspired by the crash course AI digits learning thing.
@@ -90,7 +134,7 @@ class DigitSegmenter:
             height, width = digit.shape[:2]
 
             # Squarify
-            max_side = max(height, width) + digit_padding_in_px
+            max_side = max(height, width) + self.digit_padding_in_px
             canvas = np.zeros((max_side, max_side), dtype=np.uint8)  # make square canvas
             canvas.fill(255)  # Make white
 
