@@ -33,7 +33,7 @@ def is_mostly_blank(img):
 
 def is_digit_shaped(rect):
     x, y, w, h = rect
-    return 3 < h and 3 < w < 50  # Complete heuristic
+    return 3 < h and 3 < w < 60  # Complete heuristic
 
 
 if __name__ == '__main__':
@@ -52,4 +52,5 @@ if __name__ == '__main__':
             continue
 
         hstack = segmenter.segment(gray)
+
         cv2.imwrite("%s/%s" % (out_dir, base), hstack)

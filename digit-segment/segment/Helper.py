@@ -31,7 +31,7 @@ def get_opts(avail_commands, fun_usage):
     return configurations
 
 
-def get_overlap(lhs, rhs) -> float:
+def get_overlap(lhs, rhs):
     """
     Get percentage of overlap between rectangle lhs, and rhs
     :param lhs: 2D rectangle [x, y, w, h]
