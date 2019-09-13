@@ -71,16 +71,23 @@ class NumImgs:
                 return True
         return False
 
+    def find_fully_in(self, arr, rect):
+        for i, r in enumerate(arr):
+            if np.array_equal(r, rect):  # Skip same
+                continue
+            if x_overlap_px(r, rect) == min(r[2], rect[2]):  # Fully In
+                return i
+        return None
+
     def hstack(self):
         # Sort by 'x' position
         hstack = sorted(self.candidate, key=itemgetter(0))
 
         for r1 in hstack:
-            for r2 in hstack:
-                if np.array_equal(r1, r2):  # Skip same
-                    continue
-                if x_overlap_px(r1, r2) == min(r1[2], r2[2]):  # Fully In
-                    hstack.remove(r2)
+            i = self.find_fully_in(hstack, r1)
+            while i is not None:
+                hstack.pop(i)
+                i = self.find_fully_in(hstack, r1)
         return hstack
 
     def add_img(self, rect):
@@ -185,6 +192,8 @@ class DigitSegmenter:
             processed_story.append(img)
 
         # Stack Digits horizontally
+        if len(processed_story) == 0:
+            processed_story.append(np.zeros((0, 0), dtype=np.uint8))
         hstack = np.hstack(processed_story)
 
         # Denormalize into 8 bit image
