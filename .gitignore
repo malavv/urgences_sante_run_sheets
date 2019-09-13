@@ -15,5 +15,5 @@ Scripts/
 *.egg-info
 
 # Ignore the automatic output of img-align
-after-composite.jpg
+*composite*.jpg
 matches.jpg
