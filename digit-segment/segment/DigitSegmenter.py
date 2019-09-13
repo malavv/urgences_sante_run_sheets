@@ -137,10 +137,10 @@ class DigitSegmenter:
         regions, bonding_rect = mser.detectRegions(img)
 
         # Draw MSER detected areas
-        vis = img.copy()  # because we will draw on it.
-        hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
-        cv2.polylines(vis, hulls, 1, (0, 255, 0))
         if self.show_debug_vis:
+            vis = img.copy()  # because we will draw on it.
+            hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
+            cv2.polylines(vis, hulls, 1, (0, 255, 0))
             cv2.imshow('3-hulls', vis)
             cv2.waitKey(0)
 

@@ -4,11 +4,12 @@
 Digit Segmenter
 """
 import glob
+import sys
+
 import cv2
 import os
 from tqdm import tqdm
 import numpy as np
-
 
 from segment.DigitSegmenter import DigitSegmenter
 from segment.Helper import get_opts
@@ -29,7 +30,7 @@ def as_grayscale(filename):
 
 
 def is_mostly_blank(img):
-    return np.mean(img) > 240
+    return np.mean(img) > 220
 
 
 def is_digit_shaped(rect):
@@ -55,3 +56,5 @@ if __name__ == '__main__':
         hstack = segmenter.segment(gray)
 
         cv2.imwrite("%s/%s" % (out_dir, base), hstack)
+
+    sys.exit(0)
