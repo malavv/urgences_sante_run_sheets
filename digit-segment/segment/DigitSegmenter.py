@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from operator import itemgetter
 import sys
 
 from segment.Helper import get_overlap
@@ -53,20 +54,34 @@ class NumImgs:
             self.candidate[index] = add_rect(prior, rect)
 
     def find_digit_index(self, rect):
-        for i in xrange(sys.maxint):
+        for i in range(99):
             candidate = self.get_candidate(i)
             if candidate is None:  # First time using this candidate
                 return i
-            if x_overlap_px(rect, candidate) >= 3:  # more than 3 pixel overlap in horizontal direction
+            if x_overlap_px(rect, candidate) >= 2:  # more than 3 pixel overlap in horizontal direction
                 return i
         # Could not find any valid idea
         return None
 
+    def completely_in(self, arr, rect):
+        for r in arr:
+            if np.array_equal(r, rect):
+                continue
+            if x_overlap_px(r, rect) >= min(r[2], rect[2]):
+                return True
+        return False
+
     def hstack(self):
-        res = {}
-        for i in xrange(len(self.candidate)):
-            res[i] = self.candidate[i][0]  # X coordinate
-        return [self.candidate[i] for i in sorted(res, key=res.get)]
+        # Sort by 'x' position
+        hstack = sorted(self.candidate, key=itemgetter(0))
+
+        for r1 in hstack:
+            for r2 in hstack:
+                if np.array_equal(r1, r2):  # Skip same
+                    continue
+                if x_overlap_px(r1, r2) == min(r1[2], r2[2]):  # Fully In
+                    hstack.remove(r2)
+        return hstack
 
     def add_img(self, rect):
         i = self.find_digit_index(rect)
@@ -77,7 +92,7 @@ class NumImgs:
 
 class DigitSegmenter:
     def __init__(self, mask_filename, show_debug_vis, overlap_perc_for_similar_threshold,
-                 digit_padding_in_px, is_digit_shaped):
+                 digit_padding_in_px, is_digit_shaped, show_candidate_rect):
 
         # A mask for the hour mark in the image. The ":" part.
         self.hour_mask = cv2.bitwise_not(cv2.imread(mask_filename, cv2.IMREAD_GRAYSCALE))
@@ -87,6 +102,7 @@ class DigitSegmenter:
         self.is_digit_shaped = is_digit_shaped
         self.is_similar_overlap_thresh = overlap_perc_for_similar_threshold
         self.digit_padding_in_px = digit_padding_in_px
+        self.show_candidate_rect = show_candidate_rect
 
     def __repr__(self):
         return "DigitSegmenter()"
@@ -125,6 +141,10 @@ class DigitSegmenter:
         num_imgs = NumImgs()
         for rect in bonding_rect:
             if self.is_digit_shaped(rect):
+                x, y, w, h = rect
+                if self.show_candidate_rect:
+                    cv2.imshow('3-hulls', img[y:y + h, x:x + w])
+                    cv2.waitKey(0)
                 num_imgs.add_img(rect)
 
         digits = []
@@ -170,6 +190,16 @@ class DigitSegmenter:
         # Denormalize into 8 bit image
         return 255 - (255 * hstack)
 
+    def remove_border(self, img, tresh):
+        h, w = img.shape
+        white = (255, 255, 255)
+
+        # Fill in horizontal white lines for lines with more than treshold black.
+        for i, vmean in enumerate(np.mean(img, axis=1)):
+            if (vmean / 255.0) < (1 - tresh):
+                cv2.line(img, (0, i), (w, i), white, 1, 8)
+        return img
+
     def segment(self, img):
         # Load and show original image
         if self.show_debug_vis:
@@ -183,7 +213,13 @@ class DigitSegmenter:
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-        crude_digits = self.segment_with_mser(img.copy())  # not sure the copy is needed. test later.
+        # Remove black border
+        img_no_border = self.remove_border(img.copy(), 0.85)  # not sure the copy is needed. test later. more than 85 % black
+        if self.show_debug_vis:
+            cv2.imshow("3.5-border", img_no_border)
+            cv2.waitKey(0)
+
+        crude_digits = self.segment_with_mser(img_no_border.copy())  # not sure the copy is needed. test later.
         if self.show_debug_vis:
             for digit_img in crude_digits:
                 cv2.imshow("4-digit", digit_img)
