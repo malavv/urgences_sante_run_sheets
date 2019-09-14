@@ -1,6 +1,6 @@
 import getopt
 import sys
-from typing import List, Tuple
+from typing import List, Tuple, Any
 
 import cv2
 
@@ -48,7 +48,7 @@ def get_opts(avail_commands: List[str], fun_usage: str) -> List[object]:
     return configurations
 
 
-def as_grayscale(filename: str) -> object:
+def as_grayscale(filename: str) -> Any:
     """
     Loads grayscale image from filename.
     :param filename: Image full filename
