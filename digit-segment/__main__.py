@@ -17,6 +17,7 @@ usage = "python digit-segment/ --img <images wildcard> --out <output directory>"
 commands = ["img", "out"]
 # Show a image visualization for each step of the process
 show_debug_vis = False
+show_candidate_rect = False
 # Means images with a 1% area over will be considered similar, and duplicate removed
 overlap_perc_for_similar_threshold = 0.1
 # A px padding will be created around the square digit before resizing.
@@ -33,7 +34,7 @@ def is_mostly_blank(img):
 
 def is_digit_shaped(rect):
     x, y, w, h = rect
-    return 3 < h and 3 < w < 50  # Complete heuristic
+    return 3 < h and 3 < w < 100  # Complete heuristic
 
 
 if __name__ == '__main__':
@@ -42,7 +43,7 @@ if __name__ == '__main__':
     images = glob.glob(image_wildcard)
 
     segmenter = DigitSegmenter("./digit-segment/hour_mask.png", show_debug_vis, overlap_perc_for_similar_threshold,
-                               digit_padding_in_px, is_digit_shaped)
+                               digit_padding_in_px, is_digit_shaped, show_candidate_rect)
 
     for img in tqdm(images):
         base = os.path.basename(img)
@@ -52,4 +53,5 @@ if __name__ == '__main__':
             continue
 
         hstack = segmenter.segment(gray)
+
         cv2.imwrite("%s/%s" % (out_dir, base), hstack)
