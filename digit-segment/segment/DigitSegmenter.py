@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 from operator import itemgetter
-import sys
 
 from segment.Helper import get_overlap
 
@@ -98,14 +97,11 @@ class NumImgs:
 
 
 class DigitSegmenter:
-    def __init__(self, mask_filename, show_debug_vis, overlap_perc_for_similar_threshold,
+    def __init__(self, show_debug_vis, overlap_perc_for_similar_threshold,
                  digit_padding_in_px, is_digit_shaped, show_candidate_rect):
 
-        # A mask for the hour mark in the image. The ":" part.
-        self.hour_mask = cv2.bitwise_not(cv2.imread(mask_filename, cv2.IMREAD_GRAYSCALE))
         # Show debug visualizations
         self.show_debug_vis = show_debug_vis
-        #
         self.is_digit_shaped = is_digit_shaped
         self.is_similar_overlap_thresh = overlap_perc_for_similar_threshold
         self.digit_padding_in_px = digit_padding_in_px
@@ -137,10 +133,10 @@ class DigitSegmenter:
         regions, bonding_rect = mser.detectRegions(img)
 
         # Draw MSER detected areas
-        vis = img.copy()  # because we will draw on it.
-        hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
-        cv2.polylines(vis, hulls, 1, (0, 255, 0))
         if self.show_debug_vis:
+            vis = img.copy()  # because we will draw on it.
+            hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
+            cv2.polylines(vis, hulls, 1, (0, 255, 0))
             cv2.imshow('3-hulls', vis)
             cv2.waitKey(0)
 
@@ -199,36 +195,13 @@ class DigitSegmenter:
         # Denormalize into 8 bit image
         return 255 - (255 * hstack)
 
-    def remove_border(self, img, tresh):
-        h, w = img.shape
-        white = (255, 255, 255)
-
-        # Fill in horizontal white lines for lines with more than treshold black.
-        for i, vmean in enumerate(np.mean(img, axis=1)):
-            if (vmean / 255.0) < (1 - tresh):
-                cv2.line(img, (0, i), (w, i), white, 1, 8)
-        return img
-
     def segment(self, img):
         # Load and show original image
         if self.show_debug_vis:
             cv2.imshow("1-original", img)
             cv2.waitKey(0)
 
-        # Show image no hour mark
-        img = cv2.add(img, self.hour_mask)  # Remove the hour mark, by erasing the pixels
-        if self.show_debug_vis:
-            cv2.imshow("2-nomark", img)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-
-        # Remove black border
-        img_no_border = self.remove_border(img.copy(), 0.85)  # not sure the copy is needed. test later. more than 85 % black
-        if self.show_debug_vis:
-            cv2.imshow("3.5-border", img_no_border)
-            cv2.waitKey(0)
-
-        crude_digits = self.segment_with_mser(img_no_border.copy())  # not sure the copy is needed. test later.
+        crude_digits = self.segment_with_mser(img.copy())  # not sure the copy is needed. test later.
         if self.show_debug_vis:
             for digit_img in crude_digits:
                 cv2.imshow("4-digit", digit_img)

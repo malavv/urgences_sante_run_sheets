@@ -28,10 +28,6 @@ def as_grayscale(filename):
     return cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
 
 
-def is_mostly_blank(img):
-    return np.mean(img) > 240
-
-
 def is_digit_shaped(rect):
     x, y, w, h = rect
     return 3 < h and 3 < w < 100  # Complete heuristic
@@ -42,15 +38,12 @@ if __name__ == '__main__':
 
     images = glob.glob(image_wildcard)
 
-    segmenter = DigitSegmenter("./digit-segment/hour_mask.png", show_debug_vis, overlap_perc_for_similar_threshold,
+    segmenter = DigitSegmenter(show_debug_vis, overlap_perc_for_similar_threshold,
                                digit_padding_in_px, is_digit_shaped, show_candidate_rect)
 
     for img in tqdm(images):
         base = os.path.basename(img)
         gray = as_grayscale(img)
-
-        if is_mostly_blank(gray):
-            continue
 
         hstack = segmenter.segment(gray)
 
