@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-import glob
+import glob2
 import os
 import sys
 
 from align.Align import Align
 from align.Compositor import Compositor
-from Helper import get_opts
+from helper import get_opts
 
 usage = "python digit-segment/ --ref <reference> --img <images> --out <directory>"
 cmds = ["ref", "img", "out", "NUM_FEATURES", "GOOD_MATCH_PERCENT", "PERC_COMMON_THRESH", "COMPOSITE", "v", "DRY_RUN"]
@@ -17,7 +17,7 @@ if __name__ == '__main__':
     assert os.path.exists(ref), "Reference image not found"
     assert os.path.exists(out_dir), "Output directory does not exist"
 
-    images = glob.glob(img_pattern)
+    images = glob2.glob(img_pattern)
     if len(images) == 0:
         print("Filename pattern matched no images")
         sys.exit()
